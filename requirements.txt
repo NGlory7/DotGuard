@@ -1,0 +1,6 @@
+# DotGuard - Braille & ASCII Art Threat Analysis Engine
+# Cross-platform: Windows & Linux
+
+numpy>=1.26.0
+pillow>=10.0.0
+opencv-python>=4.8.0
