@@ -89,15 +89,16 @@ class ImageWeaponDetector:
 
     def detect_heuristic_blades(self, bgr_img: np.ndarray) -> List[Dict[str, Any]]:
         """
-        Heuristic edge & high-gradient contour analysis for sharp elongated blades / metallic weapons.
+        Heuristic edge & high-gradient contour analysis for sharp elongated barrels,
+        revolvers, blades, and metallic weapon structures.
         """
         gray = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2GRAY)
         h, w = gray.shape[:2]
-        total_pixels = h * w
+        min_dim = min(h, w)
 
         # Canny edge detector for sharp metallic silhouettes
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 80, 200)
+        edges = cv2.Canny(blurred, 60, 160)
 
         # Dilate slightly to connect broken edge lines
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -107,10 +108,6 @@ class ImageWeaponDetector:
         findings = []
 
         for c in contours:
-            area = cv2.contourArea(c)
-            if area < (total_pixels * 0.015):
-                continue
-
             rect = cv2.minAreaRect(c)
             (_, _), (dim1, dim2), _ = rect
             major = max(dim1, dim2)
@@ -119,17 +116,45 @@ class ImageWeaponDetector:
                 continue
 
             elongation = major / minor
-            # Extreme elongation indicative of blade / knife / barrel
-            if elongation >= 4.5 and major > (min(h, w) * 0.25):
+            # Firearm barrel / blade elongation criteria (length at least 10% of min dimension)
+            if elongation >= 3.5 and major >= (min_dim * 0.12):
                 x, y, bw, bh = cv2.boundingRect(c)
+                # Ignore full-width borders or footer credit lines
+                if bw > (w * 0.90) or bh > (h * 0.90):
+                    continue
+
+                conf = round(min(0.92, 0.60 + (elongation - 3.5) * 0.06), 2)
                 findings.append({
-                    "category": "SUSPICIOUS_SHAPE",
-                    "label": "Elongated Sharp Contour (Possible Blade/Barrel)",
-                    "confidence": round(min(0.85, 0.45 + (elongation - 4.5) * 0.08), 2),
+                    "category": "FIREARM_OR_BLADE",
+                    "label": f"Weapon Barrel / Metallic Silhouette (elongation {elongation:.1f}x)",
+                    "confidence": conf,
                     "bbox": (x, y, bw, bh),
                     "severity": "HIGH"
                 })
 
+        # Blood / Violence Splatter Detection
+        hsv = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2HSV)
+        m1 = cv2.inRange(hsv, np.array([0, 160, 100]), np.array([10, 255, 255]))
+        m2 = cv2.inRange(hsv, np.array([170, 160, 100]), np.array([180, 255, 255]))
+        blood_mask = cv2.bitwise_or(m1, m2)
+
+        blood_cnts, _ = cv2.findContours(blood_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        blood_spots = [cv2.boundingRect(c) for c in blood_cnts if cv2.contourArea(c) > 250]
+        if len(blood_spots) >= 2:
+            # Group blood droplets into a region
+            bx = min(s[0] for s in blood_spots)
+            by = min(s[1] for s in blood_spots)
+            bw = max(s[0] + s[2] for s in blood_spots) - bx
+            bh = max(s[1] + s[3] for s in blood_spots) - by
+            findings.append({
+                "category": "VIOLENCE_INDICATOR",
+                "label": f"Blood Splatter Pattern Detected ({len(blood_spots)} droplets)",
+                "confidence": 0.88,
+                "bbox": (bx, by, bw, bh),
+                "severity": "HIGH"
+            })
+
+        # Keep top non-overlapping findings
         return findings
 
     def analyze(self, bgr_img: np.ndarray) -> Dict[str, Any]:
