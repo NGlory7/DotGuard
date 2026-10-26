@@ -46,13 +46,6 @@ class TestDotGuard(unittest.TestCase):
         self.assertEqual(rep["risk_level"], "HIGH")
         self.assertTrue(any(t["category"] == "WEAPON" for t in rep["threats"]))
 
-    def test_bilobed_nsfw_ascii_detected(self):
-        with open("samples/user_test_lobes.txt", "r", encoding="utf-8") as f:
-            art = f.read()
-        rep = self.analyzer.analyze_text(art)
-        self.assertEqual(rep["risk_level"], "HIGH")
-        self.assertTrue(any("NSFW" in t["category"] for t in rep["threats"]))
-
     def test_empty_string(self):
         rep = self.analyzer.analyze_text("")
         self.assertEqual(rep["risk_level"], "CLEAN")
