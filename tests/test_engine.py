@@ -32,6 +32,13 @@ class TestDotGuard(unittest.TestCase):
         rep = self.analyzer.analyze_text(SAMPLE_BLADE)
         self.assertTrue(any(t["category"] == "WEAPON" for t in rep["threats"]))
 
+    def test_revolver_ascii_detected_firearm(self):
+        with open("samples/user_ascii_test.txt", "r", encoding="utf-8") as f:
+            art = f.read()
+        rep = self.analyzer.analyze_text(art)
+        self.assertEqual(rep["risk_level"], "HIGH")
+        self.assertTrue(any("WEAPON" in t["category"] for t in rep["threats"]))
+
     def test_empty_string(self):
         rep = self.analyzer.analyze_text("")
         self.assertEqual(rep["risk_level"], "CLEAN")
