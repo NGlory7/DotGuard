@@ -89,10 +89,46 @@ class NSFWDetector:
                         })
         return findings
 
+    def detect_single_bilobed_contour(self, contour: np.ndarray, feat: Dict[str, Any]) -> Tuple[bool, float]:
+        """
+        Detects a single connected contour representing twin symmetric lobes
+        (breasts / buttocks / testicles) joined by cleavage, hands, or central bridge.
+        """
+        x, y, w, h = feat["bbox"]
+        bilat_sym = feat.get("bilat_sym", 0.0)
+        ar = feat["aspect_ratio"]
+        solidity = feat["solidity"]
+        extent = feat["extent"]
+
+        # Must be horizontally symmetric with twin solid rounded lobes (exclude hollow rectangular frames)
+        if bilat_sym < 0.65 or not (0.75 <= ar <= 3.2) or solidity < 0.55 or extent < 0.45:
+            return False, 0.0
+
+        hull = cv2.convexHull(contour, returnPoints=False)
+        if len(hull) > 3 and len(contour) > 10:
+            try:
+                defects = cv2.convexityDefects(contour, hull)
+                if defects is not None:
+                    max_d = 0.0
+                    for i in range(defects.shape[0]):
+                        depth_val = defects[i, 0, 3] if len(defects.shape) == 3 else defects[i, 3]
+                        d_px = depth_val / 256.0
+                        if d_px > max_d:
+                            max_d = d_px
+
+                    # Deep central notch/cleft dividing the two lobes
+                    if max_d >= (h * 0.22):
+                        conf = min(0.92, 0.68 + (bilat_sym - 0.65) * 0.50)
+                        return True, round(float(conf), 2)
+            except Exception:
+                pass
+
+        return False, 0.0
+
     def analyze_contours(self, contours: List[np.ndarray], features_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         findings = []
 
-        # Check individual phallic contours
+        # Check individual phallic contours and connected twin lobes
         for c, feat in zip(contours, features_list):
             is_phallic, conf = self.detect_phallic_structure(c, feat)
             if is_phallic:
@@ -104,7 +140,17 @@ class NSFWDetector:
                     "severity": "CRITICAL"
                 })
 
-        # Check twin lobe patterns
+            is_bilobed, b_conf = self.detect_single_bilobed_contour(c, feat)
+            if is_bilobed and not is_phallic:
+                findings.append({
+                    "category": "NSFW_ANATOMY",
+                    "label": "Dual Symmetric Lobe Contour (Breast / Buttock silhouette)",
+                    "confidence": b_conf,
+                    "bbox": feat["bbox"],
+                    "severity": "HIGH"
+                })
+
+        # Check separate twin lobe patterns
         bilobed = self.detect_bilobed_contours(contours, features_list)
         findings.extend(bilobed)
 

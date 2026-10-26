@@ -67,10 +67,25 @@ class GeometryDetector:
             return True, round(conf, 3)
         return False, 0.0
 
-    def detect_firearm_handgun_signature(self, contour: np.ndarray, features: Dict[str, Any]) -> Tuple[bool, float]:
+    def check_bilateral_symmetry(self, binary_mask: np.ndarray, bbox: tuple) -> float:
+        """
+        Calculates bilateral (horizontal flip) symmetry score (0.0 to 1.0).
+        Handguns are strongly asymmetric (< 0.40), while double lobes are highly symmetric (> 0.70).
+        """
+        x, y, w, h = bbox
+        if w < 10 or h < 10:
+            return 0.0
+        roi = binary_mask[y:y+h, x:x+w]
+        flipped = cv2.flip(roi, 1)
+        intersection = np.logical_and(roi > 0, flipped > 0).sum()
+        union = np.logical_or(roi > 0, flipped > 0).sum()
+        return float(intersection) / float(union) if union > 0 else 0.0
+
+    def detect_firearm_handgun_signature(self, contour: np.ndarray, features: Dict[str, Any], bilat_sym: float) -> Tuple[bool, float]:
         """
         Detects handgun / pistol / revolver silhouettes:
         - L-shaped geometric structure (barrel and perpendicular/angled grip)
+        - Strongly asymmetric across vertical axis (bilat_sym < 0.45)
         - Aspect ratio roughly 1.3 to 3.5
         - Moderate solidity (0.35 to 0.80)
         - Characteristic deep concavity defect (>40% of min dimension) between barrel and grip
@@ -78,6 +93,10 @@ class GeometryDetector:
         x, y, w, h = features["bbox"]
         solidity = features["solidity"]
         ar = features["aspect_ratio"]
+
+        # Handguns are intrinsically asymmetric (barrel on one side, grip on the other)
+        if bilat_sym >= 0.45:
+            return False, 0.0
 
         major_ar = max(ar, 1.0 / ar) if ar > 0 else 0
         if not (1.3 <= major_ar <= 3.5):
@@ -90,7 +109,6 @@ class GeometryDetector:
             try:
                 defects = cv2.convexityDefects(contour, hull)
                 if defects is not None:
-                    # In OpenCV defects shape is (N, 4) or (N, 1, 4)
                     max_d = 0.0
                     for i in range(defects.shape[0]):
                         depth_val = defects[i, 0, 3] if len(defects.shape) == 3 else defects[i, 3]
@@ -113,7 +131,9 @@ class GeometryDetector:
         for c, feat in zip(contours, features_list):
             bbox = feat["bbox"]
             sym_90 = self.check_4fold_rotational_symmetry(binary_mask, feat)
+            bilat_sym = self.check_bilateral_symmetry(binary_mask, bbox)
             feat["sym_90"] = sym_90
+            feat["bilat_sym"] = bilat_sym
 
             # Test 1: Swastika / Cross hate symbol
             is_swastika, sw_conf = self.detect_swastika_signature(feat, sym_90)
@@ -127,7 +147,7 @@ class GeometryDetector:
                 })
 
             # Test 2: Handgun / Revolver L-shape silhouette
-            is_handgun, hg_conf = self.detect_firearm_handgun_signature(c, feat)
+            is_handgun, hg_conf = self.detect_firearm_handgun_signature(c, feat, bilat_sym)
             if is_handgun and not is_swastika:
                 findings.append({
                     "category": "WEAPON_FIREARM",
