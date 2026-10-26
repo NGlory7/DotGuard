@@ -39,6 +39,13 @@ class TestDotGuard(unittest.TestCase):
         self.assertEqual(rep["risk_level"], "HIGH")
         self.assertTrue(any("WEAPON" in t["category"] for t in rep["threats"]))
 
+    def test_outline_tactical_knife_detected(self):
+        with open("samples/knife_test.txt", "r", encoding="utf-8") as f:
+            art = f.read()
+        rep = self.analyzer.analyze_text(art)
+        self.assertEqual(rep["risk_level"], "HIGH")
+        self.assertTrue(any(t["category"] == "WEAPON" for t in rep["threats"]))
+
     def test_empty_string(self):
         rep = self.analyzer.analyze_text("")
         self.assertEqual(rep["risk_level"], "CLEAN")

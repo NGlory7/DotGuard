@@ -62,6 +62,10 @@ class NSFWDetector:
         for i in range(n):
             for j in range(i + 1, n):
                 f1, f2 = features[i], features[j]
+                # Filter out tiny noise contours (e.g. serrated blade teeth or small symbols)
+                if f1["area"] < 300 or f2["area"] < 300:
+                    continue
+
                 area_ratio = min(f1["area"], f2["area"]) / max(f1["area"], f2["area"]) if max(f1["area"], f2["area"]) > 0 else 0
                 if area_ratio < 0.65:
                     continue

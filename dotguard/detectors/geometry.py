@@ -55,14 +55,15 @@ class GeometryDetector:
     def detect_weapon_blade_signature(self, features: Dict[str, Any]) -> Tuple[bool, float]:
         """
         Detects elongated sharp knife/blade silhouettes regardless of orientation/angle.
+        Supports both solid filled silhouettes and outline-drawn ASCII blades.
         Uses rotation-invariant minimum area rectangle elongation.
         """
         elongation = features.get("oriented_elongation", 0.0)
         solidity = features["solidity"]
 
-        # High elongation regardless of rotation angle (e.g. diagonal blade)
-        if elongation >= 3.8 and solidity >= 0.40:
-            conf = min(1.0, 0.50 + (elongation - 3.8) * 0.12)
+        # High elongation regardless of rotation angle (supports hollow outline blades down to solidity 0.22)
+        if elongation >= 3.6 and solidity >= 0.22:
+            conf = min(1.0, 0.55 + (elongation - 3.6) * 0.10)
             return True, round(conf, 3)
         return False, 0.0
 
