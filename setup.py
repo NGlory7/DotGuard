@@ -5,6 +5,8 @@ setup(
     version="1.1.0",
     packages=find_packages(),
     py_modules=["cli"],
+    package_data={"dotguard": ["fonts/*.ttf", "fonts/*.txt"]},
+    include_package_data=True,
     install_requires=[
         "numpy>=1.24.0",
         "pillow>=10.0.0",

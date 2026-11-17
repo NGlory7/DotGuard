@@ -8,9 +8,6 @@ jobs:
   test:
     name: ${{ matrix.os }} · Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
-    # Bilinen sorun: ASCII rasterleştirme Linux'ta farklı bir yazı tipi (DejaVu Sans Mono) kullanıyor ve
-    # tabanca tespiti orada başarısız oluyor. Linux sonucu görünür kalsın ama genel durumu kırmızıya çevirmesin.
-    continue-on-error: ${{ matrix.os == 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:

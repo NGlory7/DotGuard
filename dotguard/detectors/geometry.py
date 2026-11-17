@@ -117,7 +117,10 @@ class GeometryDetector:
                             max_d = d_px
 
                     min_dim = min(w, h)
-                    if min_dim > 0 and max_d >= (min_dim * 0.40):
+                    # Namlu-kabza arasındaki girinti en az kısa kenarın %33'ü kadar derin olmalı.
+                    # Repoyla gelen DejaVu Sans Mono ile örnek tabancada ölçülen oran 0,36 (Consolas'ta 0,67);
+                    # eski %40 eşiği yalnızca Consolas'ta çalışıyordu. Örnek sayısı az: yeni örneklerle gözden geçirin.
+                    if min_dim > 0 and max_d >= (min_dim * 0.33):
                         conf = min(0.95, 0.60 + (max_d / min_dim) * 0.35)
                         return True, round(float(conf), 2)
             except Exception:

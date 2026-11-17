@@ -24,22 +24,27 @@ class Rasterizer:
         self.step = dot_size + dot_spacing
         self._font = self._load_default_font()
 
+    # Repoyla gelen yazı tipi: her işletim sisteminde aynı piksel çıktısı (tespit eşikleri buna göre ayarlı).
+    BUNDLED_FONT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fonts", "DejaVuSansMono.ttf")
+    # Karakter hücresi genişliği (px). Başka bir yazı tipine düşülürse çıktı bu genişliğe ölçeklenir,
+    # böylece şekil oranları (en/boy, girinti derinliği) yazı tipinden bağımsız kalır.
+    CELL_WIDTH = 9.0
+
     def _load_default_font(self):
-        """Finds a suitable monospaced font across Windows and Linux."""
-        font_candidates = []
+        """Prefers the bundled DejaVu Sans Mono; falls back to a system monospaced font."""
+        font_candidates = [self.BUNDLED_FONT]
         if platform.system() == "Windows":
-            windir = os.environ.get("WINDIR", "C:\\Windows")
-            font_candidates = [
+            windir = os.environ.get("WINDIR", r"C:\Windows")
+            font_candidates += [
                 os.path.join(windir, "Fonts", "consola.ttf"),
                 os.path.join(windir, "Fonts", "cour.ttf"),
                 os.path.join(windir, "Fonts", "lucon.ttf"),
-                os.path.join(windir, "Fonts", "arial.ttf")
             ]
         else:
-            font_candidates = [
+            font_candidates += [
                 "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
                 "/usr/share/fonts/truetype/freefont/FreeMono.ttf",
-                "/usr/share/fonts/TTF/DejaVuSansMono.ttf"
+                "/usr/share/fonts/TTF/DejaVuSansMono.ttf",
             ]
 
         for path in font_candidates:
@@ -170,6 +175,16 @@ class Rasterizer:
             y += line_height
 
         img = np.array(pil_img)
+
+        # Yazı tipinin karakter genişliği CELL_WIDTH'ten farklıysa yatay olarak normalleştir
+        try:
+            advance = float(self._font.getlength("M"))
+        except Exception:
+            advance = self.CELL_WIDTH
+        if advance > 0 and abs(advance - self.CELL_WIDTH) > 0.05:
+            scale = self.CELL_WIDTH / advance
+            img = cv2.resize(img, (max(1, int(round(img.shape[1] * scale))), img.shape[0]), interpolation=cv2.INTER_AREA)
+
         if inverted:
             img = cv2.bitwise_not(img)
         return img

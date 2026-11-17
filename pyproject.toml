@@ -31,3 +31,6 @@ dotguard = "cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["dotguard*", "tests*"]
+
+[tool.setuptools.package-data]
+dotguard = ["fonts/*.ttf", "fonts/*.txt"]
