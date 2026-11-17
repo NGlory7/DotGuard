@@ -1,0 +1,22 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # Sunucuda ekran olmadığı için OpenCV'nin başsız (headless) sürümü kullanılır
+      - name: Bağımlılıklar
+        run: pip install "numpy>=1.26" "pillow>=10" opencv-python-headless pytest
+      - name: Testler
+        run: pytest -q

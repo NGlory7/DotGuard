@@ -1,5 +1,6 @@
 # 🛡️ DotGuard - Standalone Threat & NSFW Analysis Tool
 
+[![test](https://github.com/NGlory7/DotGuard/actions/workflows/test.yml/badge.svg)](https://github.com/NGlory7/DotGuard/actions/workflows/test.yml)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?logo=python&logoColor=white)](https://python.org)
 [![OpenCV](https://img.shields.io/badge/OpenCV-5.0%2B-5C3EE8?logo=opencv&logoColor=white)](https://opencv.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-4D4D4D)](https://github.com)
