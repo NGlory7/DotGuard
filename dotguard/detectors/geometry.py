@@ -4,7 +4,7 @@ Analyzes contour morphology, rotational symmetry, and geometric signatures
 to identify hate symbols (e.g. Swastika), weapon silhouettes, and malicious shapes.
 """
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 import cv2
 import numpy as np
 
