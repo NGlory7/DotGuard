@@ -19,4 +19,4 @@ jobs:
       - name: Bağımlılıklar
         run: pip install "numpy>=1.26" "pillow>=10" opencv-python-headless pytest
       - name: Testler
-        run: pytest -q
+        run: python -m pytest -q  # proje kökü modül yoluna eklensin (import dotguard)
